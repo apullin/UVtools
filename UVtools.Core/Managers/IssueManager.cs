@@ -195,7 +195,7 @@ public sealed class IssueManager : RangeObservableCollection<MainIssue>
                 byte emptyLayerPosType = 0;
                 int i;
 
-                for (i = 0; i < layerIndex && SlicerFile[i].IsEmpty; layerIndex++) { }
+                for (i = 0; i < layerIndex && SlicerFile[i].IsEmpty; i++) { }
 
                 if (i == layerIndex)
                 {
@@ -203,7 +203,7 @@ public sealed class IssueManager : RangeObservableCollection<MainIssue>
                 }
                 else
                 {
-                    for (i = (int) SlicerFile.LastLayerIndex; i > layerIndex && SlicerFile[i].IsEmpty; layerIndex--) { }
+                    for (i = (int) SlicerFile.LastLayerIndex; i > layerIndex && SlicerFile[i].IsEmpty; i--) { }
                     emptyLayerPosType = i == layerIndex ? (byte) 3 : (byte) 2;
                 }
 
