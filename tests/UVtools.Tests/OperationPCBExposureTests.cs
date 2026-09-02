@@ -167,6 +167,7 @@ public class OperationPCBExposureTests
         using var board = new TempFile(PcbFixtures.NegativeYBoard);
         var operation = CreateOperation(slicerFile, board.Path);
         operation.InvertColor = true;
+        operation.InvertArea = OperationPCBExposure.InvertAreaType.Plate;
 
         using var mat = operation.GetMat(operation.Files[0]);
 
@@ -272,10 +273,11 @@ public class OperationPCBExposureTests
     }
 
     [Fact]
-    public void InvertColorDefaultsToTheWholePlate()
+    public void InvertColorDefaultsToTheBoardOutline()
     {
+        // The enum is ordered so its zero value, the default, confines the inversion to the board
         using var slicerFile = PcbFixtures.CreateSlicerFile();
-        Assert.Equal(OperationPCBExposure.InvertAreaType.Plate, new OperationPCBExposure(slicerFile).InvertArea);
+        Assert.Equal(OperationPCBExposure.InvertAreaType.BoardOutline, new OperationPCBExposure(slicerFile).InvertArea);
     }
 
     [Fact]
@@ -308,6 +310,7 @@ public class OperationPCBExposureTests
         var plainDark = PcbFixtures.PlatePixels * PcbFixtures.PlatePixels - CvInvoke.CountNonZero(plain);
 
         operation.InvertColor = true;
+        operation.InvertArea = OperationPCBExposure.InvertAreaType.Plate;
         using var inverted = operation.GetMat(operation.Files[0]);
         var invertedDark = PcbFixtures.PlatePixels * PcbFixtures.PlatePixels - CvInvoke.CountNonZero(inverted);
 
@@ -431,7 +434,7 @@ public class OperationPCBExposureTests
         var offset = operation.GetDrawOffsetMillimeters();
 
         using var upright = operation.GetMat(operation.Files[0]);
-        operation.FlipY = false;
+        operation.FlipVertically = false;
         using var mirrored = operation.GetMat(operation.Files[0]);
 
         // The round pad is above the square one on the board, at Y -25 against Y -30

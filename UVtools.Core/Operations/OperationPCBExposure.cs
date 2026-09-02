@@ -261,7 +261,7 @@ public partial class OperationPCBExposure : Operation
     /// Gets or sets the area <see cref="InvertColor"/> covers.
     /// <para><see cref="InvertAreaType.BoardOutline"/> confines it to the board, ie the outline files when any
     /// are selected and the drawn artwork otherwise, leaving the surrounding plate dark.</para>
-    /// /// <para><see cref="InvertAreaType.Plate"/> lights the whole build area, so everything outside the artwork
+    /// <para><see cref="InvertAreaType.Plate"/> lights the whole build area, so everything outside the artwork
     /// is exposed as well.</para>
     /// </summary>
     [ObservableProperty]
