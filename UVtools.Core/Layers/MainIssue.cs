@@ -133,10 +133,15 @@ public class MainIssue : IReadOnlyList<Issue>
 
     public MainIssue(IssueType type, IEnumerable<Issue> issues) : this(type)
     {
-        foreach (var issue in issues)
+        Childs = issues.AsValueEnumerable().OrderBy(issue => issue.LayerIndex).ToArray();
+        if (Childs.Length == 0) return;
+
+        // Spanning a single layer the total is an area (px²), otherwise it is a volume (px³); AreaChar follows the same rule
+        var isVolume = LayerRangeCount > 1;
+        foreach (var issue in Childs)
         {
             issue.Parent = this;
-            var layerHeightInPixels = issue.Layer.SlicerFile.MillimetersToPixelsF(issue.Layer.LayerHeight, 20);
+            var layerHeightInPixels = isVolume ? issue.Layer.SlicerFile.MillimetersToPixelsF(issue.Layer.LayerHeight, 20) : 1;
             Area += issue.Area * layerHeightInPixels;
             PixelCount += issue.PixelsCount;
             if (issue.BoundingRectangle.IsEmpty) continue;
@@ -147,16 +152,6 @@ public class MainIssue : IReadOnlyList<Issue>
             }
 
             BoundingRectangle = Rectangle.Union(BoundingRectangle, issue.BoundingRectangle);
-        }
-
-        if (Childs.Length == 1)
-        {
-            Area = Childs[0].Area;
-            Childs = issues.AsValueEnumerable().ToArray();
-        }
-        else
-        {
-            Childs = issues.AsValueEnumerable().OrderBy(issue => issue.LayerIndex).ToArray();
         }
 
         Area = Math.Round(Area, 3);
