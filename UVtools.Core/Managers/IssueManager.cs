@@ -225,6 +225,33 @@ public sealed class IssueManager : RangeObservableCollection<MainIssue>
             return new HollowAirCheck(roi, fill, CvInvoke.CountNonZero(overlap));
         }
 
+        // True when any contour of the group that sits on layerIndex or layerIndex + 1 overlaps contour.
+        // A cavity can have several contours on the layer above (it forks), and a group can already hold
+        // contours from the current layer, so testing only the most recently added contour would attach a
+        // hollow to a group, or not, depending on the order the hollows were visited. Groups are built
+        // top-down but merged groups are not sorted, so the whole list is scanned; the layer test is cheap
+        // and only the few contours that pass it get rasterized.
+        static bool GroupTouches(List<(VectorOfVectorOfPoint contour, uint layerIndex)> group, VectorOfVectorOfPoint contour, int layerIndex)
+        {
+            for (var i = group.Count - 1; i >= 0; i--)
+            {
+                if (group[i].layerIndex > layerIndex + 1) continue;
+                if (EmguContours.ContoursIntersect(group[i].contour, contour)) return true;
+            }
+            return false;
+        }
+
+        static bool IssueGroupTouches(List<IssueOfContours> group, VectorOfVectorOfPoint contour, int layerIndex)
+        {
+            for (var i = group.Count - 1; i >= 0; i--)
+            {
+                if (group[i].LayerIndex > layerIndex + 1) continue;
+                using var vec = new VectorOfVectorOfPoint(group[i].Contours);
+                if (EmguContours.ContoursIntersect(contour, vec)) return true;
+            }
+            return false;
+        }
+
         if (printHeightConfig.Enabled && SlicerFile.MachineZ > 0)
         {
             float printHeightWithOffset = Layer.RoundHeight(SlicerFile.MachineZ + printHeightConfig.Offset);
@@ -988,27 +1015,20 @@ public sealed class IssueManager : RangeObservableCollection<MainIssue>
                                     continue;
                                 }
 
-                                for (var contourIndex = group.Count - 1; contourIndex >= 0; contourIndex--)
+                                // if any contours in this group, that are on the previous layer, overlap the new suction area, they are all suction areas
+                                if (!GroupTouches(group, trap, layerIndex)) continue;
+
+                                foreach (var item in group)
                                 {
-                                    if (group[contourIndex].layerIndex > layerIndex + 1) break;
-                                    var testContour = group[contourIndex].contour;
-
-                                    if (!EmguContours.ContoursIntersect(testContour, trap)) continue;
-                                    // if any contours in this group, that are on the previous layer, overlap the new suction area, they are all suction areas
-
-                                    foreach (var item in group)
+                                    suctionCups[item.layerIndex].Add(item.contour);
+                                    if (item.layerIndex != layerIndex)
                                     {
-                                        suctionCups[item.layerIndex].Add(item.contour);
-                                        if (item.layerIndex != layerIndex)
-                                        {
-                                            resinTraps[item.layerIndex].Remove(item.contour);
-                                        }
+                                        resinTraps[item.layerIndex].Remove(item.contour);
                                     }
-
-                                    group.Clear();
-                                    resinTrapGroups.RemoveAt(groupIndex);
-                                    break;
                                 }
+
+                                group.Clear();
+                                resinTrapGroups.RemoveAt(groupIndex);
                             }
                             /* to keep things tidy while we iterate resin traps, it will be left in the list for now, and removed later */
                         }
@@ -1021,9 +1041,10 @@ public sealed class IssueManager : RangeObservableCollection<MainIssue>
                             var overlappingGroupIndexes = new List<int>();
                             for (var groupIndex = 0; groupIndex < resinTrapGroups.Count; groupIndex++)
                             {
-                                if (resinTrapGroups[groupIndex][^1].layerIndex != layerIndex && resinTrapGroups[groupIndex][^1].layerIndex != layerIndex + 1) continue;
+                                /* the last entry is always the lowest layer seen so far, so this group is already out of reach */
+                                if (resinTrapGroups[groupIndex][^1].layerIndex > layerIndex + 1) continue;
 
-                                if (EmguContours.ContoursIntersect(resinTrapGroups[groupIndex][^1].contour, trap))
+                                if (GroupTouches(resinTrapGroups[groupIndex], trap, layerIndex))
                                 {
                                     overlappingGroupIndexes.Add(groupIndex);
                                 }
@@ -1139,11 +1160,9 @@ public sealed class IssueManager : RangeObservableCollection<MainIssue>
                             var overlappingGroupIndexes = new List<int>();
                             for (var x = 0; x < resinTrapGroups.Count; x++)
                             {
-                                if (resinTrapGroups[x][^1].LayerIndex != layerIndex &&
-                                    resinTrapGroups[x][^1].LayerIndex != layerIndex + 1) continue;
+                                if (resinTrapGroups[x][^1].LayerIndex > layerIndex + 1) continue;
 
-                                using var vec = new VectorOfVectorOfPoint(resinTrapGroups[x][^1].Contours);
-                                if (EmguContours.ContoursIntersect(trap, vec))
+                                if (IssueGroupTouches(resinTrapGroups[x], trap, layerIndex))
                                 {
                                     overlappingGroupIndexes.Add(x);
                                 }
@@ -1214,10 +1233,8 @@ public sealed class IssueManager : RangeObservableCollection<MainIssue>
                                 var overlappingGroupIndexes = new List<int>();
                                 for (var x = 0; x < suctionGroups.Count; x++)
                                 {
-                                    if (suctionGroups[x][^1].LayerIndex != layerIndex &&
-                                        suctionGroups[x][^1].LayerIndex != layerIndex + 1) continue;
-                                    using var vec = new VectorOfVectorOfPoint(suctionGroups[x][^1].Contours);
-                                    if (EmguContours.ContoursIntersect(trap, vec))
+                                    if (suctionGroups[x][^1].LayerIndex > layerIndex + 1) continue;
+                                    if (IssueGroupTouches(suctionGroups[x], trap, layerIndex))
                                     {
                                         overlappingGroupIndexes.Add(x);
                                     }
