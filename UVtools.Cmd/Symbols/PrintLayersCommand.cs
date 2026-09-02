@@ -92,6 +92,8 @@ internal static class PrintLayersCommand
                 foreach (var propertyInfo in slicerFile[layerIndex].GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 {
                     if (propertyInfo.Name.Equals("Item")) continue;
+                    // Objects and arrays only print their type name, and reading some of them (image, contours, PNG bytes) decodes the whole layer
+                    if (propertyInfo.PropertyType != typeof(string) && (propertyInfo.PropertyType.IsClass || propertyInfo.PropertyType.IsInterface)) continue;
                     if (matchNames is not null && matchNames.Length > 0)
                     {
                         if (matchNames.All(s => s != propertyInfo.Name)) continue;

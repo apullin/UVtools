@@ -50,7 +50,7 @@ internal class Program
 
             PrintIssuesCommand.CreateCommand(),
             PrintPropertiesCommand.CreateCommand(),
-            //PrintLayersCommand.CreateCommand(),
+            PrintLayersCommand.CreateCommand(),
             PrintGCodeCommand.CreateCommand(),
             PrintMachinesCommand.CreateCommand(),
             PrintFormatsCommand.CreateCommand(),
