@@ -879,22 +879,27 @@ public abstract partial class FileFormat : ObservableObject, IDisposable, IEquat
                 : fileFormats[0];
         }
 
-        // Multiple instances using Check for valid candidate
-        foreach (var fileFormat in fileFormats)
+        // Multiple formats share this extension: when the file exists let each candidate inspect it
+        if (File.Exists(extensionOrFilePath))
         {
-            if (fileFormat.CanProcess(extensionOrFilePath))
+            foreach (var fileFormat in fileFormats)
             {
-                return createNewInstance
-                    ? Activator.CreateInstance(fileFormat.GetType()) as FileFormat
-                    : fileFormat;
+                if (fileFormat.CanProcess(extensionOrFilePath))
+                {
+                    return createNewInstance
+                        ? Activator.CreateInstance(fileFormat.GetType()) as FileFormat
+                        : fileFormat;
+                }
             }
+
+            return null;
         }
 
-        return null;
-        // Try this in a far and not probable attempt
-        //return createNewInstance
-        //    ? Activator.CreateInstance(fileFormats[0].GetType()) as FileFormat
-        //    : fileFormats[0];
+        // The file does not exist yet (e.g. a conversion target), so nothing can be inspected:
+        // use the first format registered for the extension, which is the plain variant
+        return createNewInstance
+            ? Activator.CreateInstance(fileFormats[0].GetType()) as FileFormat
+            : fileFormats[0];
     }
 
     /// <summary>
